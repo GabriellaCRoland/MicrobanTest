@@ -1,3 +1,27 @@
+# Mein Microban
+
+Eigene Fassung von [Rhoban/microban](https://github.com/Rhoban/microban): der Code von Rhoban unverändert, dazu eine
+Kletterbewegung, die beim Hackathon Rock Climbing Robots (Bordeaux, 2026) an der echten Wand N1 funktioniert hat.
+
+| Füße | Einstellung im Dashboard | Bewegungen |
+|---|---|---|
+| normale Füße | Version `classic` (Voreinstellung) | `walk` (Laufen), `squat`, `look`, `head` … |
+| Kletterfüße | Version `climber` | `kletter_n1_v0_15_deine_mama`, `look`, `head` … |
+
+**Wechsel der Füße:** Füße umbauen, dann im Dashboard die Version umstellen. Sie wird auf dem Roboter in
+`robot_variant.txt` gespeichert; das Dashboard zeigt nur die Bewegungen, die zur Version passen.
+
+**Klettern (`kletter_n1_v0_15_deine_mama`):** Das Netzteil auf 8,0 V stellen, den Roboter mit den Servos an und nach vorn
+gebeugten Knien an den Startgriffen von N1 einhängen, die Bewegung starten. Stand: Sprosse 1 und 2 an der echten Wand
+(alle 12 Züge, mit Nachgreifen), der Lauf kam teils weiter, aber nicht bis ganz oben. Servos vorher abkühlen lassen: der
+linke Knöchel (`left_ankle_pitch`, ID 15) wurde bis 60 °C warm. Die Datei gilt nur für diese Wand.
+
+Beides läuft auch im Simulator: `make sim` (normale Füße), `make sim VARIANT=climber` oder `make sim WALL=N1` (Klettern;
+der Kletterstand ist für Knie bis 115° und echte Servos abgestimmt: im Simulator die Optionen `ausgleich` und
+`ausgleich_links` auf 0.25–0.5 stellen).
+
+---
+
 # Microban: A Compact, Fully 3D-Printable Open-Source Humanoid Robot
 
 [![License: GPL v3](https://img.shields.io/badge/Software-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.html)
