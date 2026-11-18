@@ -20,10 +20,14 @@
   D1 hat eine LSM6DSV16X und bräuchte einen neuen Treiber. Laut Schaltplan ist der Pi 3A+ pinkompatibel
   (I2C1, UART an GPIO 14/15).
 
+- Rumpf ausgemessen (`v3/analyse/rumpf.md`, Werkzeuge `v3/tools/step_bauteile.py`, `platz_pruefen.py`):
+  Pi 3A+ passt mittig hochkant an die Stelle des Pi Zero. Nur `pelvis` (oberer Rand) und `trunk_top` (Unterkante)
+  müssen geändert werden, `chest` kann voraussichtlich bleiben.
+
 ## Nächster Schritt
 
-- Rumpf ausmessen: Wo sitzen Board und Platine in `chest`/`trunk_top`, und wie viel Platz braucht der Pi 3A+?
-- Danach: Kopf mit Kamerahalter und Kabelweg durch den Hals.
+- Abstand USB-A ↔ Pollen-Platine mit dem STEP der Platine C1 prüfen.
+- Kopf mit AI Camera und Kabelweg durch den Hals konstruieren (Code-CAD), danach `pelvis`/`trunk_top` anpassen.
 - Offen aus `v3/elektronik.md`: Kamerakabel, RAM/CPU-Test, Strom messen, Raspberry Pi OS + `imx500-all`.
 
 ## Offene Fragen
