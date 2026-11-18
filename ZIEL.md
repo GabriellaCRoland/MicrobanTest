@@ -17,6 +17,11 @@ danach als zweiter Schritt auf derselben Basis.
 3. **Besser druckbar (Prusa):** weniger Stützmaterial, vor allem bei Rumpf (`chest`, `pelvis`, `trunk_top`),
    Oberschenkeln und Kopf. Alle Teile passen in den Druckraum des Prusa Mini (180 × 180 × 180 mm).
 4. **Einfacher Aufbau:** weniger Teile und Schrauben, wo es geht, leichtere Kabelführung.
+5. **Eigenes Erscheinungsbild (Entscheidung 18.11.):** alle Strukturteile neu konstruiert, Stil **technisch-clean**
+   (kantig mit einheitlichen Fasen, aufgeräumt, Kabel versteckt, gleiche Linien überall). Druckoptimiert für den
+   **Prusa MK4/MK4S** (25 × 21 cm, eine Farbe): flache Seite aufs Bett, Überhänge ≤ 45°, keine langen Brücken.
+6. **Neue Füße:** andere Größe/Form, schöner, besserer Halt (TPU-Sohle als eigenes Teil). Ändert sich die Sohle so
+   stark, dass `walk.onnx` nicht mehr läuft, muss das Laufmodell neu trainiert werden.
 
 ## Was gleich bleibt
 

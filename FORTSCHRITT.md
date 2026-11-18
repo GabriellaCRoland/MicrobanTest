@@ -24,10 +24,35 @@
   Pi 3A+ passt mittig hochkant an die Stelle des Pi Zero. Nur `pelvis` (oberer Rand) und `trunk_top` (Unterkante)
   müssen geändert werden, `chest` kann voraussichtlich bleiben.
 
+- Kopf v0.1 mit AI Camera (`v3/kopf.md`, Code-CAD `v3/cad/kopf.py`): Distanzring, Bodenplatte und Haube, alle
+  ohne nennenswertes Stützmaterial. Bei ±60° Kopfdrehung keine Zusammenstöße (`v3/tools/kopf_pruefen.py`).
+  Weitere Werkzeuge: `ansicht.py` (3D-Bild), `schnitt.py` (Schnittbild), `export_teile.py` (Teile in Einbaulage als STL).
+
+- Deckel/Rumpf für Pi 3A+ untersucht (`v3/analyse/rumpf.md`, Nachtrag): Der Pi passt quer, aber die
+  Pollen-Platine auf seiner Stiftleiste stößt an die Schultermotoren und ihre Halterung → Brust müsste neu.
+  Mit Pi Zero 2 W bleibt der Rumpf, und das Kamerakabel hat einen kurzen Weg.
+- Entscheidung: **beides vorbereiten**, zuerst Pi Zero 2 W, danach Brust für Pi 3A+.
+- Deckel v3 für Pi Zero 2 W (`v3/deckel.md`, `v3/cad/deckel.py`): Kabelschlitz hinter dem Kopfmotor, Ladeplatine
+  4 mm nach rechts. Kabelweg Kopf → Pi geprüft und frei. Pi Zero dafür um 180° gedreht einbauen.
+
+- Schwerpunkt + Lauftest (`v3/analyse/schwerpunkt_lauftest.md`): Kopf 17 → 36,5 g, Roboter +2,5 %, Schwerpunkt
+  +3,7 mm höher. Im Rhoban-Simulator mit `walk.onnx` kein Sturz in 7 Fällen, Werte fast gleich wie mit altem Kopf.
+  Zuschauen: `v3/tools/lauf_ansehen.py`.
+
+- Gestaltung festgelegt: alles neu, technisch-clean, Prusa MK4/MK4S (siehe ZIEL.md Punkt 5/6).
+- **Neuer Fuß** (`v3/cad/fuss.py`): PLA-Fuß + TPU-Sohle mit Querrillen, Sohle 80 × 40 (Original 90 × 45),
+  achteckige Arme mit versenkten Schrauben, Mittelrippe, Tropfen-Mittelloch. Überhang 72 mm² (Original 66), TPU 0.
+  Rollen ±35° frei (`v3/tools/gelenk_pruefen.py`). Sohlen-Studie (`v3/tools/fuss_test.py`): `walk.onnx` läuft ohne
+  Neutraining. Die Zehe muss bis x = 54 reichen, sonst wird Rückwärtslaufen wackelig (72 mm: Neigung 22° statt 16°).
+
 ## Nächster Schritt
 
-- Abstand USB-A ↔ Pollen-Platine mit dem STEP der Platine C1 prüfen.
-- Kopf mit AI Camera und Kabelweg durch den Hals konstruieren (Code-CAD), danach `pelvis`/`trunk_top` anpassen.
+- Fuß-Ansicht fertig machen, Gabriella entscheidet über die Form.
+- Rumpf im selben Stil (Brust, Becken, Deckel neu; Brust mit Platz für Pi 3A+).
+
+- Neue Brust (`chest`) für Pi 3A+ + Pollen-Platine (Schultermotor-Halterung), dabei weniger Stützmaterial.
+- Probedruck Kopf + Deckel, Maße der echten AI Camera nachmessen.
+- Abstand USB-A ↔ Pollen-Platine mit dem STEP der Platine C1 prüfen (nur für Pi 3A+).
 - Offen aus `v3/elektronik.md`: Kamerakabel, RAM/CPU-Test, Strom messen, Raspberry Pi OS + `imx500-all`.
 
 ## Offene Fragen

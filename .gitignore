@@ -8,3 +8,6 @@ placo_test.py
 move_options.json
 robot_variant.txt
 recordings/
+
+# v3: erzeugte 3D-Vorschau (v3/tools/vorschau.py)
+v3/vorschau*.html

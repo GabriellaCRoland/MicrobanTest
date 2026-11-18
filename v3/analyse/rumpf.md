@@ -58,3 +58,32 @@ den oberen Rand von `pelvis` (Befestigung) und die Unterkante von `trunk_top`. D
    Dreht sich der Kopf, braucht das Flachbandkabel eine Schlaufe → Platz im Deckel einplanen.
 4. **Kopf:** 40 × 50 × 33 mm. Die AI Camera (25 × 24 × 11,9 mm) passt hinein, der Kopf muss dafür aber
    neu konstruiert werden.
+
+## Nachtrag 18.11.: Pollen-Platine und Kabelweg (wichtig!)
+
+Bilder: `bilder/rumpf_front_schnitte.png`, `bilder/rumpf_schnitt_y11_5_pi_zero.png`, `bilder/deckel_*.png`.
+
+**Wie der Pi Zero heute sitzt:** Er ist mit 2 Domen an der Brust-Vorderwand verschraubt (Löcher y ±11,5, z 30 und 88), die
+Pollen-Platine sitzt dahinter auf 8-mm-Abstandshaltern. Platine + Stecker reichen bis ca. x = 8.
+
+**Problem beim Pi 3A+:** Der Pi selbst passt (quer: zwischen den Schraubendomen von Becken und Deckel, nur
+USB-A braucht 33 mm³ in der Brustwand). Aber die **Pollen-Platine (65 × 30) sitzt auf der Stiftleiste**, und die liegt
+beim Pi 3A+ am langen Rand. Die Platine rückt dadurch aus der Mitte und stößt an die Schultermotoren und ihre
+Halterung in der Brust:
+
+| Lage | Pollen-Platine + Stecker (x 8 … 14,8) |
+|---|---|
+| Pi Zero heute (y ±15, mittig) | frei |
+| Pi 3A+ quer, Platine unten (y ±32,5, z 33–63) | Brust 557 mm³, Schultermotoren je 89 mm³ |
+| Pi 3A+ quer, Platine oben (z 59–89) | Schultermotoren je 318 mm³, Brust 156 mm³ |
+| Pi 3A+ hochkant, Platine seitlich (y −2 … 28) | Brust 169 mm³, Schultermotor 149 mm³ |
+
+→ Mit dem Pi 3A+ muss die **Brust (`chest`) neu konstruiert werden** (Halterung der Schultermotoren). Das ist ohnehin das
+Teil mit dem meisten Stützmaterial, aber deutlich mehr Arbeit.
+
+**Kabelweg Kamera:** Hinter dem Kopfmotor durch einen Schlitz im Deckel (x −16,5 … −12,2, nicht weiter nach vorn, dort
+sitzt eine Motorschraube), dann über den Akku nach vorn. Die Ladeplatine (unter dem Deckel, y −21,5 … −3,3) muss dafür
+ca. 6 mm nach rechts außen.
+- Pi Zero 2 W: Kameraanschluss (22-polig) am kurzen Rand → hochkant liegt er **oben direkt unter dem Deckel**. Kurzer,
+  einfacher Kabelweg.
+- Pi 3A+: Anschluss 12–15 mm neben der Mitte, Kabel muss einmal um 90° verdreht werden.
