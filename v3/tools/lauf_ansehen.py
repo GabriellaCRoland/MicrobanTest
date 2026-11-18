@@ -5,7 +5,7 @@ Beim neuen Kopf werden Masse, Schwerpunkt und Trägheit aus robot_v3.xml überno
 
 Aufruf (aus dem Repo-Ordner):
   uv run --no-project --python 3.12 --with "microban-sim @ git+https://github.com/Rhoban/microban_sim" \
-      --with onnxruntime --with ahrs --with trimesh python v3/tools/lauf_ansehen.py PFAD/robot_v3.xml [alt|neu]
+      --with onnxruntime --with ahrs --with trimesh python v3/tools/lauf_ansehen.py PFAD/robot_v3.xml [alt|neu|v3]
 Das Programm läuft in Schleife: stehen → vorwärts → drehen → rückwärts → seitwärts → vorwärts mit Kopfschwenken.
 Fenster schließen zum Beenden. Im Fenster: Maus drehen/zoomen, Leertaste = Pause.
 """
@@ -57,9 +57,14 @@ def neue_kopfform(spec):
         g.rgba = farbe
 
 
-spec = lt.spec_mit_kopf(v3_xml if welcher == "neu" else None)
-if welcher == "neu":
-    neue_kopfform(spec)
+if welcher == "v3":                                # alles neu: Kopf, Schienbein +15 mm, neuer Fuß (v3/tools/modell_v3.py)
+    from microban_sim.scene import build_spec
+    from modell_v3 import v3_spec
+    spec = v3_spec(build_spec("classic"), formen=True)
+else:
+    spec = lt.spec_mit_kopf(v3_xml if welcher == "neu" else None)
+    if welcher == "neu":
+        neue_kopfform(spec)
 sim = lt.MicrobanSim("classic", spec=spec, seed=1)
 viewer = sim.view(realtime=True)
 print(f"Kopf: {welcher}. Fenster schließen zum Beenden.")

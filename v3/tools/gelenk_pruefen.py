@@ -27,11 +27,13 @@ from OCP.collections import Sequence_TDF_Label
 
 p = argparse.ArgumentParser()
 p.add_argument("step")
-p.add_argument("--teile", nargs="+")
+p.add_argument("--teile", nargs="*", default=[])
+p.add_argument("--mitdrehen", nargs="*", default=[], help="Teile der Baugruppe, die sich mitdrehen")
 p.add_argument("--punkt", nargs=3, type=float)
 p.add_argument("--richtung", nargs=3, type=float)
 p.add_argument("--winkel", nargs="+", type=float)
-p.add_argument("--hindernisse", nargs="+")
+p.add_argument("--hindernisse", nargs="*", default=[])
+p.add_argument("--feste-neu", nargs="*", default=[], help="neue feste Teile (STEP)")
 a = p.parse_args()
 
 doc = TDocStd_Document(TCollection_ExtendedString("doc"))
@@ -49,6 +51,7 @@ def name(label):
 
 
 feste = []
+drehende_alt = []
 
 
 def gehe(label, loc, pfad):
@@ -63,7 +66,9 @@ def gehe(label, loc, pfad):
             gehe(k, loc, pfad)
     else:
         n = " / ".join(pfad[-2:])
-        if any(h.lower() in n.lower() for h in a.hindernisse):
+        if any(h.lower() in n.lower() for h in a.mitdrehen):
+            drehende_alt.append((n, st.GetShape_s(label).Moved(loc)))
+        elif any(h.lower() in n.lower() for h in a.hindernisse):
             feste.append((n, st.GetShape_s(label).Moved(loc)))
 
 
@@ -86,7 +91,8 @@ def volumen(x, y):
     return g.Mass()
 
 
-teile = [(t.replace("\\", "/").split("/")[-1], lade(t)) for t in a.teile]
+teile = [(t.replace("\\", "/").split("/")[-1], lade(t)) for t in a.teile] + drehende_alt
+feste += [(t.replace("\\", "/").split("/")[-1], lade(t)) for t in a.feste_neu]
 print(f"{len(feste)} feste Teile: {sorted({n for n, _ in feste})}")
 for w in a.winkel:
     t = gp_Trsf()

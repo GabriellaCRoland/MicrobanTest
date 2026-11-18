@@ -45,9 +45,23 @@
   Rollen ±35° frei (`v3/tools/gelenk_pruefen.py`). Sohlen-Studie (`v3/tools/fuss_test.py`): `walk.onnx` läuft ohne
   Neutraining. Die Zehe muss bis x = 54 reichen, sonst wird Rückwärtslaufen wackelig (72 mm: Neigung 22° statt 16°).
 
+- Fuß soll komplett neu, Ziel **mehr Beweglichkeit**, Neutraining ist ok. Knöchel-Analyse (`v3/analyse/knoechel.md`):
+  Der Knöchel ist schon ein Kardangelenk. „Spitze runter“ (35°) begrenzt der Rollmotor, der in den Kniemotor
+  schwenkt. Empfehlung: Motoranordnung lassen, Schienbein 10–15 mm länger, Sohle 4 mm tiefer, Schienbein/Block/Fuß neu.
+  Fuß-Ansicht mit Nicken + Rollen + Abspielen: `v3/tools/vorschau.py … fuss`.
+
+- **Unterschenkel v3** (+15 mm Schienbein, Sohle 4 mm tiefer): Spitze runter 35° → 95°, hoch 85° → 110°,
+  Rollen ±40° → ±55°, mit echten Teilen geprüft. `v3/cad/unterschenkel.py`, Ansicht `vorschau.py … unterschenkel`.
+
+- **v3-Simulator-Modell** (`v3/tools/modell_v3.py`): Kopf, Schienbein +15 mm, Sohle 80 × 40 / 4 mm tiefer – passt
+  exakt zum CAD, funktioniert mit microban_model (Simulator) und mjlab_microban (Training). Altes walk.onnx läuft
+  darauf ohne Sturz (`lauftest_v3.py`), aber rückwärts 23,5° Neigung und Kniestrom +19 % → Neutraining sinnvoll.
+  Zuschauen: `lauf_ansehen.py … v3`. Training vorbereitet: `v3/training/` (einrichten.sh + README).
+
 ## Nächster Schritt
 
-- Fuß-Ansicht fertig machen, Gabriella entscheidet über die Form.
+- Training auf einem Rechner mit NVIDIA-GPU (HCR-Lab-Laptop: vorher absprechen, ob frei).
+- Danach: walk_v3.onnx im Simulator testen; Schienbein im technisch-clean-Stil; Rumpf.
 - Rumpf im selben Stil (Brust, Becken, Deckel neu; Brust mit Platz für Pi 3A+).
 
 - Neue Brust (`chest`) für Pi 3A+ + Pollen-Platine (Schultermotor-Halterung), dabei weniger Stützmaterial.

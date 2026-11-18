@@ -13,16 +13,12 @@ Aufruf (aus dem Repo-Ordner):
 """
 from pathlib import Path
 
+import sys
+
 from build123d import Box, Location, Pos, Solid, export_step, export_stl
-from OCP.IFSelect import IFSelect_RetDone
-from OCP.STEPCAFControl import STEPCAFControl_Reader
-from OCP.TCollection import TCollection_ExtendedString
-from OCP.TDataStd import TDataStd_Name
-from OCP.TDF import TDF_Label
-from OCP.TDocStd import TDocStd_Document
-from OCP.TopLoc import TopLoc_Location
-from OCP.XCAFDoc import XCAFDoc_DocumentTool
-from OCP.collections import Sequence_TDF_Label
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from baugruppe import lade_baugruppe   # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -38,42 +34,6 @@ SPIEL = 0.4
 
 def quader(x0, x1, y0, y1, z0, z1):
     return Pos((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2) * Box(x1 - x0, y1 - y0, z1 - z0)
-
-
-# ---------------------------------------------------------------- Original aus der Baugruppe lesen
-def lade_baugruppe(datei):
-    doc = TDocStd_Document(TCollection_ExtendedString("doc"))
-    reader = STEPCAFControl_Reader()
-    reader.SetNameMode(True)
-    if reader.ReadFile(str(datei)) != IFSelect_RetDone:
-        raise SystemExit(f"{datei} konnte nicht gelesen werden")
-    reader.Transfer(doc)
-    st = XCAFDoc_DocumentTool.ShapeTool_s(doc.Main())
-
-    def name(label):
-        attr = TDataStd_Name()
-        return attr.Get().ToExtString() if label.FindAttribute(TDataStd_Name.GetID_s(), attr) else "?"
-
-    teile = []
-
-    def gehe(label, loc, pfad):
-        if st.IsReference_s(label):
-            ref = TDF_Label()
-            st.GetReferredShape_s(label, ref)
-            gehe(ref, loc.Multiplied(st.GetLocation_s(label)), pfad + [name(label)])
-        elif st.IsAssembly_s(label):
-            kinder = Sequence_TDF_Label()
-            st.GetComponents_s(label, kinder)
-            for k in kinder:
-                gehe(k, loc, pfad)
-        else:
-            teile.append((" / ".join(pfad[-2:]), st.GetShape_s(label), loc))
-
-    wurzeln = Sequence_TDF_Label()
-    st.GetFreeShapes(wurzeln)
-    for w in wurzeln:
-        gehe(w, TopLoc_Location(), [name(w)])
-    return teile
 
 
 teile = lade_baugruppe(REPO / "cad" / "microban.step")

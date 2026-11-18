@@ -6,8 +6,8 @@ Zwei Teile, beide flach auf dem Druckbett, ohne Stützmaterial:
 Beide Füße sind gleich (wie beim Original, 2 × drucken).
 
 Anschluss wie beim Original (cad/stl/foot.stl), Koordinaten wie cad/microban.step für den linken Fuß „foot <1>“ (mm):
-Rollachse parallel zu x bei y = −36, z = −144,62; Arme innen bei x = −23 (Horn) und x = 32,5 (Gegenlager), Lochbild
-4 × ø2 auf 6 mm Radius + ø6 Mitte; Unterseite der Sohle bei z = −167,6 (Beinlänge bleibt gleich).
+Rollachse parallel zu x bei y = −36, z = −144,62 − BEIN_LAENGER; Arme innen bei x = −23 (Horn) und x = 32,5 (Gegenlager), Lochbild
+4 × ø2 auf 6 mm Radius + ø6 Mitte; Unterseite der Sohle 27 mm unter der Rollachse (Original 23).
 
 Aufruf (aus dem Repo-Ordner):
   uv run --no-project --python 3.12 --with build123d python v3/cad/fuss.py
@@ -18,10 +18,12 @@ from pathlib import Path
 from build123d import (Axis, Box, Cylinder, Polygon, Pos, Rot, chamfer, export_step, export_stl, extrude, Plane)
 
 # ---------------------------------------------------------------- Anschluss (nicht ändern)
-ACHSE_Y, ACHSE_Z = -36.0, -144.62
+BEIN_LAENGER = 15.0             # Schienbein länger (v3/cad/unterschenkel.py) → Knöchel 15 mm tiefer
+SOHLE_TIEFER = 4.0              # Sohle zusätzlich tiefer unter der Rollachse → mehr Luft beim Rollen
+ACHSE_Y, ACHSE_Z = -36.0, -144.62 - BEIN_LAENGER
 ARM_HINTEN_INNEN, ARM_VORN_INNEN = -23.0, 32.5
 LOCHKREIS, LOCH, LOCH_MITTE = 6.0, 2.0, 6.0
-Z_BODEN = -167.6
+Z_BODEN = -167.6 - BEIN_LAENGER - SOHLE_TIEFER
 
 # ---------------------------------------------------------------- Gestaltung (frei, im Simulator geprüft)
 SOHLE_X = (-26.0, 54.0)         # 80 mm, Ferse wie das Original, vorn 10 mm kürzer (Lauftest: Zehe ≥ x 54 nötig)
@@ -34,7 +36,7 @@ KANTE = 1.0                     # Fase an allen oberen Kanten (einheitlich)
 ARM_D, ARM_B = 3.0, 18.0
 ARM_FASE = 5.0                  # 45° oben an den Armen (Material um die Löcher bleibt ≥ 1,5 mm)
 SENKUNG_D, SENKUNG_T = 4.2, 1.2 # Schraubenköpfe STP39 2x6 (ø3,9 × 1,4) liegen versenkt
-RIPPE_H, RIPPE_B = 5.0, 10.0    # Mittelrippe, 45°-Flanken; Spitze bei z −157,6 (Knöchelblock bei 35° Rollen: −156,2)
+RIPPE_H, RIPPE_B = 4.0, 8.0     # Mittelrippe, 45°-Flanken; Spitze 18 mm unter der Rollachse (Knöchelblock bei 55° Rollen: 16,5)
 RILLE_B, RILLE_T, RILLE_TEILUNG = 1.0, 0.8, 5.0
 
 Z_PLATTE_UNTEN = Z_BODEN + TPU_D                # Unterseite PLA, ganz flach (liegt beim Druck auf dem Bett)
@@ -108,4 +110,4 @@ for name, teil, dichte in (("fuss", fuss, 1.24), ("fuss_sohle", sohle, 1.21)):
     bb = teil.bounding_box()
     print(f"{name:10} {teil.volume:7.0f} mm³ (massiv {teil.volume * dichte / 1000:4.1f} g)  "
           f"x {bb.min.X:.1f}..{bb.max.X:.1f}  y {bb.min.Y:.1f}..{bb.max.Y:.1f}  z {bb.min.Z:.2f}..{bb.max.Z:.2f}")
-print(f"Spitze Mittelrippe bei z {Z_PLATTE_OBEN + RIPPE_H:.2f} (Knöchelblock bei 35° Rollen: −156,2)")
+print(f"Spitze Mittelrippe {ACHSE_Z - Z_PLATTE_OBEN - RIPPE_H:.1f} mm unter der Rollachse (Knöchelblock bei 55° Rollen: 16,5 mm)")
