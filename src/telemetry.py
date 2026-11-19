@@ -31,6 +31,8 @@ CURRENT_LIMIT_A = 1.75             # XL330 at 5-8 V (BAM max_current)
 TEMPERATURE_LIMIT_C = 70           # XL330 factory Temperature Limit
 VOLTAGE_BIT = 1                    # always set above 7 V (the robot runs at ~8 V): not an error for Microban
 KEYS_TIMEOUT_S = 0.6               # the page repeats the held keys every 0.2 s
+# Sicherheit (Gabriella): a reboot holds the control loop up to 1.5 s, so a flood of them would stop the robot
+MOTOR_CMD_MIN_S = {"reboot": 2.0, "torque": 0.3}     # at most one per this many seconds; em is never limited
 MOVE_STATE = {"INACTIVE": 0, "ACTIVE": 2, "STOPPING": 3}   # the page's codes
 
 
@@ -61,6 +63,8 @@ class Telemetry:
         self.tick_count = 0
         self._keys: set[str] = set()
         self._keys_t = 0.0
+        self._motor_cmd_t: dict[str, float] = {}                          # Sicherheit (Gabriella): rate limit
+        self._tick_error_t = -math.inf                                    # Sicherheit (Gabriella): see tick()
 
     def configure(self, moves: dict, variant: str = CLASSIC) -> None:
         """The scheduler's moves (name -> Runner): the page lists them, with each move's description and the versions
@@ -133,7 +137,18 @@ class Telemetry:
         self.torque = [int(on)] * len(self.ids)
 
     def tick(self, state, target_angles: dict, tick_ms: float, status: dict | None = None) -> None:
-        """Call once per tick, after the motors were commanded (the bus is free)."""
+        """Call once per tick, after the motors were commanded (the bus is free).
+        Sicherheit (Gabriella): the dashboard never stops the control loop: whatever goes wrong in it (a packet, a
+        command, the network) is logged at most every 10 s and the tick goes on without it."""
+        try:
+            self._tick(state, target_angles, tick_ms, status)
+        except Exception as e:  # noqa: BLE001 - on purpose: the robot's control matters more than its dashboard
+            now = time.monotonic()
+            if now - self._tick_error_t > 10.0:
+                self._tick_error_t = now
+                print(f"dashboard: tick failed ({type(e).__name__}: {e}), the robot goes on", end="\r\n", flush=True)
+
+    def _tick(self, state, target_angles: dict, tick_ms: float, status: dict | None = None) -> None:
         if self.link is None:
             self.configure({})
             if self.link is None:
@@ -154,7 +169,14 @@ class Telemetry:
             tick_ms=tick_ms, powered=status.get("powered"), init=status.get("init"),
             moves=moves, sliders=[self.moves[k].slider[n] for k, n in self.sliders])
         for cmd in self.link.commands():
-            self._run(cmd)
+            try:                                  # Sicherheit (Gabriella): one bad command never stops the loop
+                self._run(cmd)
+            except Exception as e:  # noqa: BLE001 - on purpose: the robot keeps running whatever a command holds
+                print(f"dashboard command {cmd.get('name')!r} failed: {type(e).__name__}", end="\r\n", flush=True)
+                try:
+                    self.link.ack(cmd, False, f"{cmd.get('name')}: refused ({type(e).__name__})")
+                except Exception as e2:  # noqa: BLE001 - on purpose: no answer then, the loop goes on
+                    print(f"dashboard ack failed: {type(e2).__name__}", end="\r\n", flush=True)
 
     def _read_health(self) -> None:
         try:
@@ -229,6 +251,12 @@ class Telemetry:
             self.link.ack(cmd, False, f"unknown joint {joint}")
             return
         mid, i = MOTOR_TO_ID[joint], self.names.index(joint)
+        if name in MOTOR_CMD_MIN_S:                   # Sicherheit (Gabriella): rate limit, see MOTOR_CMD_MIN_S
+            now = time.monotonic()
+            if now - self._motor_cmd_t.get(name, -math.inf) < MOTOR_CMD_MIN_S[name]:
+                self.link.ack(cmd, False, f"{name} {joint}: too fast, wait {MOTOR_CMD_MIN_S[name]:g} s between two")
+                return
+            self._motor_cmd_t[name] = now
         try:
             # a reboot waits for the motor (0.1 to 1.5 s): the control loop pauses meanwhile (one motor is in error)
             if name == "reboot":

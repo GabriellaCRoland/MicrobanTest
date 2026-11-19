@@ -1,4 +1,4 @@
-.PHONY: discover-robots sync backup restore setup deploy run stop robot-service-enable robot-service-disable robot-service-start robot-service-stop robot-service-logs shutdown voltage imu sim viewer dashboard gamepad-headless-enable gamepad-headless-disable
+.PHONY: discover-robots dashboard-key sync backup restore setup deploy run stop robot-service-enable robot-service-disable robot-service-start robot-service-stop robot-service-logs shutdown voltage imu sim viewer dashboard gamepad-headless-enable gamepad-headless-disable
 
 HOST ?= microban
 ID ?=
@@ -86,7 +86,14 @@ restore:
 		rsync -a --delete --exclude=.venv --exclude=recordings --exclude=logs \$$t/microban/ microban/; rm -rf \$$t; \
 		sudo systemctl restart microban.service; echo \"robot's code back to ~/\$$f, its program restarted\""
 
-deploy: backup sync
+# Sicherheit (Gabriella): the dashboard's key (secure.py) to the robot, so it takes the PC's commands. Sent over
+# SSH's stdin (never on a command line), into a file only the robot's user can read. Made on this PC if missing.
+dashboard-key:
+	@KEY=$$(uv run -q --no-project python src/humanoid_dashboard/secure.py --ensure) && \
+	ssh $(HOST) 'umask 077 && mkdir -p ~/.config/humanoid_dashboard && cat > ~/.config/humanoid_dashboard/key && chmod 600 ~/.config/humanoid_dashboard/key' < "$$KEY" && \
+	echo "dashboard key on the robot ($$KEY)"
+
+deploy: backup sync dashboard-key
 	ssh $(HOST) "sudo systemctl restart microban.service && echo 'robot program restarted with your code'"
 
 robot-service-logs:

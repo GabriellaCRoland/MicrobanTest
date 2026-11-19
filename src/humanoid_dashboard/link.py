@@ -15,6 +15,11 @@ Protocol (UDP, one port on the robot):
   {"op": "ack", "seq", "ok", "text"}; {"op": "event", "level", "text", "t"}.
 * robot -> PC, binary frame: MAGIC, uint32 schema id, uint32 sequence, float64 robot time, then float32 values in the
   schema's field order (NaN for a value not given this tick).
+
+Sicherheit (Gabriella): with the shared key (secure.py) the robot takes hellos and commands only when signed
+({"session", "seq", "sig"} added by the PC); an unsigned or stale hello gets a small {"op": "challenge", "session"}
+(no data), anything else unsigned is dropped. Without a key on the robot: data for any hello, every command refused.
+Malformed packets are dropped, at most MAX_CLIENTS PCs listen, and one call reads at most MAX_PACKETS packets.
 """
 import json
 import math
@@ -23,15 +28,29 @@ import struct
 import time
 import zlib
 
+from .secure import Verifier, load_key
+
 PORT = 7350
 MAGIC = b"HDT1"
 HEADER = struct.Struct("<4sIId")
 SUBSCRIPTION_S = 3.0
+# Sicherheit (Gabriella): limits against floods and malformed packets
+MAX_PACKET_BYTES = 8192           # a command is ~300 bytes
+MAX_PACKETS = 200                 # read per call: a flood cannot hold the control loop
+MAX_COMMANDS = 50                 # kept per call, the rest dropped
+MAX_CLIENTS = 4                   # PCs listening at once (forged hellos cannot fill the robot's memory)
+MAX_NAME = 40
+REJECT_LOG_S = 10.0               # dropped commands: one line in the robot's log at most this often
+_KEY_FILE = object()              # Link(key=...) default: the key file of the user running the robot
 
 
 class Link:
-    def __init__(self, robot: str, fields: dict, meta: dict | None = None, port: int = PORT, max_hz: float | None = None):
-        """max_hz: frames sent per second at most (None: every publish(); faster calls send one in a few)."""
+    def __init__(self, robot: str, fields: dict, meta: dict | None = None, port: int = PORT, max_hz: float | None = None,
+                 key=_KEY_FILE):
+        """max_hz: frames sent per second at most (None: every publish(); faster calls send one in a few).
+        key: the shared key (bytes; None: no key, commands refused); by default read from secure.KEY_FILE."""
+        self.auth = Verifier(load_key() if key is _KEY_FILE else key)      # Sicherheit (Gabriella)
+        self.rejected, self._rejected_logged = 0, 0.0
         self.robot = robot
         self.min_period = 1.0 / max_hz if max_hz else 0.0
         self._last_sent = 0.0
@@ -53,7 +72,8 @@ class Link:
         self._commands = []
 
     def _set_schema(self):
-        self.schema = json.dumps({"op": "schema", "robot": self.robot, "fields": self.fields, "meta": self.meta}).encode()
+        self.schema = json.dumps({"op": "schema", "robot": self.robot, "fields": self.fields, "meta": self.meta,
+                                  "session": self.auth.session, "auth": self.auth.key is not None}).encode()
         self.schema_id = zlib.crc32(self.schema)
 
     def set_meta(self, meta: dict) -> None:
@@ -65,25 +85,71 @@ class Link:
 
     # ---- receiving ------------------------------------------------------------------------------------------------
     def _receive(self):
-        while True:
+        for _ in range(MAX_PACKETS):              # Sicherheit (Gabriella): a flood cannot hold the control loop
             try:
                 data, addr = self.sock.recvfrom(65536)
             except (BlockingIOError, InterruptedError):
                 return
             except OSError:
                 return
-            try:
-                msg = json.loads(data)
-            except ValueError:
+            if len(data) > MAX_PACKET_BYTES:
                 continue
-            op = msg.get("op")
-            if op == "hello":
-                self.clients[addr] = time.monotonic()
-                self._send(self.schema, addr)
-            elif op == "cmd":
-                self.clients[addr] = time.monotonic()
-                self._commands.append({"seq": msg.get("seq"), "name": msg.get("name"), "args": msg.get("args") or {},
-                                       "addr": addr})
+            try:                                  # Sicherheit (Gabriella): no packet, whatever it holds, stops the loop
+                self._handle(data, addr)
+            except Exception as e:  # noqa: BLE001 - on purpose: logged, never raised into the control loop
+                print(f"dashboard link: packet from {addr[0]} dropped ({type(e).__name__})", flush=True)
+
+    def _handle(self, data: bytes, addr) -> None:
+        try:
+            msg = json.loads(data)
+        except (ValueError, RecursionError):
+            return
+        if not isinstance(msg, dict):         # Sicherheit (Gabriella): [1], 5, "x" are valid JSON too
+            return
+        op = msg.get("op")
+        if op == "hello":
+            if self.auth.key is None or self.auth.check(msg):
+                if self._subscribe(addr):
+                    self._send(self.schema, addr)
+            else:                             # unsigned, or the session before a restart: tell it, no data
+                challenge = {"op": "challenge", "session": self.auth.session,
+                             "refused": msg.get("session") == self.auth.session and "sig" in msg}   # a wrong key
+                self._send(json.dumps(challenge).encode(), addr)
+        elif op == "cmd":
+            name, args = msg.get("name"), msg.get("args") or {}
+            if not isinstance(name, str) or len(name) > MAX_NAME or not isinstance(args, dict):
+                return
+            cmd = {"seq": msg.get("seq"), "name": name, "args": args, "addr": addr}
+            if self.auth.key is None:
+                self.ack(cmd, False, "no dashboard key on the robot: commands are off "
+                                     "(make deploy copies the PC's key, then restart the robot's program)")
+                return
+            if not self.auth.check(msg):
+                self._reject(addr)
+                return
+            self._subscribe(addr)
+            if len(self._commands) < MAX_COMMANDS:
+                self._commands.append(cmd)
+
+    def _subscribe(self, addr) -> bool:
+        """Sicherheit (Gabriella): at most MAX_CLIENTS listening PCs; a new one waits until one expired."""
+        if addr not in self.clients and not self.listening_room():
+            return False
+        self.clients[addr] = time.monotonic()
+        return True
+
+    def listening_room(self) -> bool:
+        _ = self.listening                        # drops the expired ones
+        return len(self.clients) < MAX_CLIENTS
+
+    def _reject(self, addr):
+        """Sicherheit (Gabriella): a command without this robot's signature (another PC, a stranger, a replay)."""
+        self.rejected += 1
+        now = time.monotonic()
+        if now - self._rejected_logged > REJECT_LOG_S:
+            self._rejected_logged = now
+            print(f"dashboard link: {self.rejected} command(s) without a valid signature dropped so far "
+                  f"(last from {addr[0]})", flush=True)
 
     def commands(self) -> list:
         """Commands received since the last call (each a dict with name, args); answer each with ack()."""

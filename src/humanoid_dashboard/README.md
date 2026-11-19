@@ -60,6 +60,15 @@ robot. The **⟳ Deploy code**
 button runs a command on the PC (`--deploy`), not on the robot. The robot answers each with `ack` (shown in Events) and decides what is safe; it lists the
 ones it accepts in `meta.commands`, and the page shows only those.
 
+### Who may command the robot (`secure.py`, added for MicrobanTest)
+
+Only a PC holding the shared key `~/.config/humanoid_dashboard/key` (made at the dashboard's first start, never in the
+repository; `make deploy` copies it to the robot). Each hello and command is signed (HMAC-SHA256) with the robot's
+session, drawn at each start, and a number that only grows: a stranger on the same wifi, a captured packet sent again
+or one from before a restart is dropped. An unsigned hello only gets `{"op": "challenge", "session"}`, no data.
+A robot without the key shows its data and refuses every command. Malformed packets are dropped, at most 4 PCs
+listen, `reboot` / `torque` are rate-limited (`em` never). Tests: `tests/test_dashboard_sicherheit.py`.
+
 ## On the PC
 
 ```bash

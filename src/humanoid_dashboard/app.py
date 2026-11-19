@@ -28,6 +28,7 @@ import numpy as np
 from aiohttp import web, WSMsgType
 
 from .link import HEADER, MAGIC, PORT
+from .secure import KEY_FILE, Signer, load_key  # Sicherheit (Gabriella)
 
 WEB = pathlib.Path(__file__).parent / "web"
 PUSH_HZ = 50                       # to the page, as the robot's telemetry (the latest frame only: nothing piles up)
@@ -149,6 +150,7 @@ class RobotLink(asyncio.DatagramProtocol):
 
     def send(self, msg):
         if self.transport and self.hub.robot_addr:
+            msg = self.hub.signer.wrap(msg)       # Sicherheit (Gabriella): signed with the shared key
             self.transport.sendto(json.dumps(msg).encode(), self.hub.robot_addr)
 
 
@@ -198,6 +200,8 @@ class Hub:
         self.browsers = set()
         self.link = None
         self.cmd_seq = 0
+        self.signer = Signer(None)                # Sicherheit (Gabriella): main() gives it the key
+        self.key_refused = False
         self.recording = None
         self.events = []
         self.robot_host, self.robot_addr = None, None
@@ -214,6 +218,7 @@ class Hub:
         if model in self.models.paths and model != self.model_name:
             self.model_name, self.model = model, await asyncio.to_thread(self.models.get, model)
         self.robot_host, self.robot_addr = host, info[0][4]
+        self.signer.session, self.key_refused = None, False      # Sicherheit (Gabriella): the new robot says its own
         self.schema, self.names, self.unpack, self.schema_id = None, {}, None, None
         self.values, self.robot_t, self.seq, self.rx_time, self.new, self.rates = {}, 0.0, 0, 0.0, False, []
         self.end_recording("another robot")
@@ -261,8 +266,29 @@ class Hub:
 
     # robot -> PC
     def message(self, msg, raw=b""):
+        if not isinstance(msg, dict):
+            return
         op = msg.get("op")
+        if op == "challenge":                     # Sicherheit (Gabriella): the robot's session, then a signed hello
+            if not isinstance(msg.get("session"), str):
+                return
+            if msg["session"] != self.signer.session:
+                self.signer.session = msg["session"]
+                if self.signer.key is None:
+                    self.event(f"the robot wants a dashboard key and this PC has none ({KEY_FILE})", "error")
+                else:
+                    self.link.send({"op": "hello"})
+            elif msg.get("refused") is True and self.signer.key is not None and not self.key_refused:
+                self.key_refused = True
+                self.event(f"the robot refuses this PC's dashboard key ({KEY_FILE}): another key is on the robot. "
+                           f"make deploy copies this PC's key to it", "error")
+            return
         if op == "schema":
+            if isinstance(msg.get("session"), str):
+                self.signer.session = msg["session"]                # Sicherheit (Gabriella)
+            if msg.get("auth") is False and self.schema is None:
+                self.event("this robot has no dashboard key: it only shows its data, commands are off "
+                           "(make deploy copies the key)", "error")
             # the frames carry the CRC of the schema they follow (the robot computes it on the same bytes): every
             # schema received sets it again, so a restarted robot is followed even with the same fields
             self.schema_id = zlib.crc32(raw)
@@ -551,6 +577,9 @@ def main():
     first = a.model_name if a.model_name in paths else next(iter(paths))
     hub = Hub(Models(paths, a.visual_groups, a.motor_mesh), first)
     hub.deploy_cmd, hub.deploy_dir = a.deploy, os.getcwd()
+    hub.signer = Signer(load_key(create=True))   # Sicherheit (Gabriella): made at the first start, never in the repo
+    if hub.signer.key is None:
+        raise SystemExit(f"{KEY_FILE} is not a valid dashboard key: delete it, it is made again at the next start")
 
     async def run():
         loop = asyncio.get_running_loop()
